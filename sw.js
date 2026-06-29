@@ -1,4 +1,4 @@
-const CACHE = 'ledger-cache-v2';
+const CACHE = 'ledger-cache-v3';
 const ASSETS = ['./app.html', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e=>{
