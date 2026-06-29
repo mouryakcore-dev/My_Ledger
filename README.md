@@ -1,24 +1,24 @@
 # My Ledger
 
-A personal budget tracker — income, expenses, debts, bills, savings, and IOUs — synced live across devices via Firebase Firestore, installable as a home-screen app via GitHub Pages.
+My Ledger is a personal finance tracker for managing income, expenses, debts, bills, savings, and IOUs. It syncs data across devices through Firebase Firestore and can be installed as a progressive web app.
 
-## Files
-- `app.html` — the entire app (HTML/CSS/JS in one file). This is the file GitHub Pages serves.
-- `manifest.json` — PWA metadata (name, icons, theme color) so it installs like a real app.
-- `sw.js` — service worker, lets the app load offline once visited.
-- `icon-192.png` / `icon-512.png` — app icons.
+## Project files
+- app.html — the full app UI, styles, and logic in a single file.
+- manifest.json — PWA metadata for installation and app appearance.
+- sw.js — service worker for offline support and caching.
+- icon-192.png and icon-512.png — app icons.
 
-## Live URL
+## Live app
 https://mouryakcore-dev.github.io/My_Ledger/app.html
 
-## Making changes
-1. Edit `app.html` (or other files) locally in VS Code.
-2. Commit and push to `main`.
-3. GitHub Pages rebuilds automatically within a minute or two.
-4. If `app.html` changed, bump the `CACHE` version string in `sw.js` (e.g. `ledger-cache-v2` → `v3`) so phones/browsers pick up the new version instead of serving a stale cached copy.
-5. Refresh the app on each device (may need a hard refresh / reopen once) to see the update.
+## Updating the app
+1. Edit the files locally in VS Code.
+2. Commit your changes.
+3. Push to the main branch.
+4. If app.html changes, update the cache version in sw.js so installed browsers fetch the new version.
+5. Refresh the app on your device if the old version still appears.
 
-## Firebase
-Sync is powered by a Firestore database (project `my-ledger-89067`). The config keys in `app.html` are not secret — access to your data is controlled by your personal passcode (set on first load of the app) plus Firestore rules.
+## Firebase sync
+The app uses Firebase Firestore for syncing. The config values in app.html are not secrets, and access is protected by your personal passcode plus Firestore security rules.
 
-**Important:** the Firestore security rules were created in test mode and expire **29 July 2026**. Before then, go to Firebase Console → Firestore Database → Rules, and update them to not have an expiry (e.g. restrict by a simple rule rather than a date cutoff), or the app will stop syncing.
+> Important: the current Firestore rules are in test mode and expire on 29 July 2026. Before that date, update them in the Firebase console to a safer permanent rule, or syncing will stop.
