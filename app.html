@@ -157,6 +157,13 @@
   button.danger{color:var(--red);border-color:var(--red-dim);}
 
   table.ledger{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:4px;}
+  .table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -2px;}
+  .table-scroll table.ledger{min-width:480px;}
+  @media(max-width:560px){
+    .table-scroll table.ledger{min-width:0;}
+    table.ledger td:last-child{white-space:normal;}
+    table.ledger td .actions{display:flex;flex-wrap:wrap;gap:6px;}
+  }
   table.ledger th{
     text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:var(--text-faint);
     border-bottom:1px solid var(--line);padding:7px 4px;
@@ -278,7 +285,7 @@
     </div>
     <div class="panel-block accent-teal">
       <h2>Opening → closing</h2>
-      <table class="ledger" id="summaryTable"></table>
+      <div class="table-scroll"><table class="ledger" id="summaryTable"></table></div>
     </div>
     <div class="panel-block accent-green">
       <h2>Close this month</h2>
@@ -308,7 +315,7 @@
         <div class="field"><label>Source</label><input type="text" id="incSrc" placeholder="e.g. Salary, Freelance"></div>
       </div>
       <button class="add" onclick="addIncome()">Add earning</button>
-      <table class="ledger" id="incomeTable"></table>
+      <div class="table-scroll"><table class="ledger" id="incomeTable"></table></div>
     </div>
   </section>
 
@@ -337,12 +344,12 @@
       <h2>Budget targets per category</h2>
       <div class="grid cols-3" id="catBudgetInputs"></div>
     </div>
-    <div class="panel-block accent-red"><h2>Food</h2><table class="ledger" id="table-food"></table></div>
-    <div class="panel-block accent-red"><h2>Travel</h2><table class="ledger" id="table-travel"></table></div>
-    <div class="panel-block accent-red"><h2>Entertainment</h2><p class="hint">What you did to enjoy yourself, not just what it cost.</p><table class="ledger" id="table-entertainment"></table></div>
-    <div class="panel-block accent-red"><h2>Gym &amp; subscriptions</h2><table class="ledger" id="table-gym"></table></div>
-    <div class="panel-block accent-red"><h2>Purchases</h2><p class="hint">Things you bought — clothes, gadgets, household items.</p><table class="ledger" id="table-purchases"></table></div>
-    <div class="panel-block accent-red"><h2>Miscellaneous</h2><table class="ledger" id="table-misc"></table></div>
+    <div class="panel-block accent-red"><h2>Food</h2><div class="table-scroll"><table class="ledger" id="table-food"></table></div></div>
+    <div class="panel-block accent-red"><h2>Travel</h2><div class="table-scroll"><table class="ledger" id="table-travel"></table></div></div>
+    <div class="panel-block accent-red"><h2>Entertainment</h2><p class="hint">What you did to enjoy yourself, not just what it cost.</p><div class="table-scroll"><table class="ledger" id="table-entertainment"></table></div></div>
+    <div class="panel-block accent-red"><h2>Gym &amp; subscriptions</h2><div class="table-scroll"><table class="ledger" id="table-gym"></table></div></div>
+    <div class="panel-block accent-red"><h2>Purchases</h2><p class="hint">Things you bought — clothes, gadgets, household items.</p><div class="table-scroll"><table class="ledger" id="table-purchases"></table></div></div>
+    <div class="panel-block accent-red"><h2>Miscellaneous</h2><div class="table-scroll"><table class="ledger" id="table-misc"></table></div></div>
   </section>
 
   <section class="panel" id="panel-cigs">
@@ -357,7 +364,7 @@
       <button class="add" onclick="addCig()">Add entry</button>
       <h3>This month's total</h3>
       <div class="value" id="cigTotal" style="font-family:'IBM Plex Mono',monospace;font-size:18px;color:var(--amber);"></div>
-      <table class="ledger" id="cigTable"></table>
+      <div class="table-scroll"><table class="ledger" id="cigTable"></table></div>
     </div>
   </section>
 
@@ -371,7 +378,7 @@
         <div class="field"><label>Budgeted amount (₹)</label><input type="number" id="billBudget" placeholder="0"></div>
       </div>
       <button class="add" onclick="addBill()">Add bill</button>
-      <table class="ledger" id="billsTable"></table>
+      <div class="table-scroll"><table class="ledger" id="billsTable"></table></div>
     </div>
   </section>
 
@@ -397,7 +404,7 @@
         <div class="field"><label>Note (optional)</label><input type="text" id="iouNote" placeholder="why / for what"></div>
       </div>
       <button class="add" onclick="addIOU()">Add</button>
-      <table class="ledger" id="iouTable"></table>
+      <div class="table-scroll"><table class="ledger" id="iouTable"></table></div>
     </div>
   </section>
 
@@ -412,7 +419,7 @@
       </div>
       <button class="add" onclick="addSavingsMove()">Add</button>
       <h3>This month's movements</h3>
-      <table class="ledger" id="savTable"></table>
+      <div class="table-scroll"><table class="ledger" id="savTable"></table></div>
     </div>
   </section>
 
@@ -420,7 +427,7 @@
     <div class="panel-block accent-teal">
       <h2>Month-by-month memory</h2>
       <p class="hint">Every closed month, kept for reference.</p>
-      <table class="ledger" id="historyTable"></table>
+      <div class="table-scroll"><table class="ledger" id="historyTable"></table></div>
     </div>
   </section>
 
@@ -829,13 +836,13 @@ function renderLoans(){
     const items = groups[key];
     const remaining = items.filter(i=>!i.paid).reduce((s,i)=>s+i.amount,0);
     html += `<div class="loan-group"><div class="head"><span class="name">${app} — ${name}</span><span class="meta">remaining ${fmt(remaining)}</span></div>`;
-    html += '<table class="ledger"><tr><th></th><th>Due date</th><th>Amount</th><th>Status</th></tr>';
+    html += `<div class="table-scroll"><table class="ledger"><tr><th></th><th>Due date</th><th>Amount</th><th>Status</th></tr>`;
     items.sort((a,b)=>a.date.localeCompare(b.date)).forEach(l=>{
       html += `<tr>
         <td><input class="chk" type="checkbox" ${l.paid?'checked':''} onchange="toggleLoanPaid('${l.id}',this.checked)"></td>
         <td>${l.date}</td><td class="amt">${fmt(l.amount)}</td><td>${loanStatusPill(l)}</td></tr>`;
     });
-    html += '</table></div>';
+    html += '</table></div></div>';
   });
   document.getElementById('loanGroups').innerHTML = html;
 }
@@ -848,8 +855,8 @@ function renderIOUs(){
     html += `<tr><td>${p.name}</td><td>${p.type==='lent'?'They owe you':'You owe them'}</td><td>${p.date}</td>
       <td class="note">${p.note||'—'}</td><td class="amt">${fmt(p.amount)}</td>
       <td>${p.status==='settled'?'<span class="pill settled">settled</span>':'<span class="pill pending">pending</span>'}</td>
-      <td><button class="ghost" onclick="toggleIOU(${i})">${p.status==='settled'?'reopen':'settle'}</button>
-      <button class="ghost danger" onclick="removeIOU(${i})">remove</button></td></tr>`;
+      <td><div class="actions" style="display:flex;flex-wrap:wrap;gap:6px;"><button class="ghost" onclick="toggleIOU(${i})">${p.status==='settled'?'reopen':'settle'}</button>
+      <button class="ghost danger" onclick="removeIOU(${i})">remove</button></div></td></tr>`;
   });
   tb.innerHTML = html;
 }
