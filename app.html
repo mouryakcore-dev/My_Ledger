@@ -273,6 +273,68 @@
   .save-note{font-size:11px;color:var(--text-faint);text-align:center;margin-top:24px;letter-spacing:.3px;}
   .subgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
   @media(max-width:700px){.subgrid{grid-template-columns:1fr;}}
+
+  /* ---- motion layer ---- */
+  @keyframes breathe{
+    0%{text-shadow:0 0 16px rgba(61,236,165,.2);}
+    100%{text-shadow:0 0 28px rgba(61,236,165,.45);}
+  }
+  .stamp.bal .value{animation:breathe 2.6s ease-in-out infinite alternate;}
+
+  .panel.active .panel-block{animation:blockIn .45s var(--ease) backwards;}
+  .panel.active .panel-block:nth-of-type(1){animation-delay:.02s;}
+  .panel.active .panel-block:nth-of-type(2){animation-delay:.08s;}
+  .panel.active .panel-block:nth-of-type(3){animation-delay:.14s;}
+  .panel.active .panel-block:nth-of-type(4){animation-delay:.20s;}
+  .panel.active .panel-block:nth-of-type(5){animation-delay:.26s;}
+  .panel.active .panel-block:nth-of-type(6){animation-delay:.32s;}
+  @keyframes blockIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+
+  .stamp-row .stamp{animation:blockIn .4s var(--ease) backwards;}
+  .stamp-row .stamp:nth-child(1){animation-delay:0s;}
+  .stamp-row .stamp:nth-child(2){animation-delay:.05s;}
+  .stamp-row .stamp:nth-child(3){animation-delay:.1s;}
+  .stamp-row .stamp:nth-child(4){animation-delay:.15s;}
+
+  button.add:active, button.ghost:active, .month-control button:active, .closebar button:active{transform:scale(.95) !important;}
+  button.add, button.ghost, .month-control button, .closebar button{will-change:transform;}
+
+  label:has(> input.chk), input.chk{transition:transform .15s var(--ease);}
+  input.chk:active{transform:scale(1.25);}
+
+  .row-flash{animation:flashRow 1.1s var(--ease);}
+  @keyframes flashRow{
+    0%{background:rgba(61,236,165,.22);}
+    100%{background:transparent;}
+  }
+
+  #toastWrap{position:fixed;bottom:18px;right:18px;left:18px;display:flex;flex-direction:column;align-items:flex-end;gap:8px;z-index:500;pointer-events:none;}
+  @media(min-width:600px){#toastWrap{left:auto;}}
+  .toast{
+    background:var(--panel-raised);border:1px solid var(--green);color:var(--text);
+    font-size:12.5px;padding:10px 16px;border-radius:var(--radius-sm);
+    box-shadow:0 8px 24px rgba(0,0,0,.4), 0 0 16px rgba(61,236,165,.15);
+    animation:toastIn .3s var(--ease), toastOut .3s var(--ease) 2.2s forwards;
+    max-width:280px;
+  }
+  .toast.err{border-color:var(--red);}
+  @keyframes toastIn{from{opacity:0;transform:translateY(8px) scale(.96);}to{opacity:1;transform:translateY(0) scale(1);}}
+  @keyframes toastOut{from{opacity:1;}to{opacity:0;transform:translateY(-6px);}}
+
+  #balanceChart path.draw{stroke-dasharray:var(--len);stroke-dashoffset:var(--len);animation:drawLine 1.1s var(--ease) forwards;}
+  @keyframes drawLine{to{stroke-dashoffset:0;}}
+
+  .pie{transition:transform .4s var(--ease), filter .4s;}
+  @keyframes pieIn{from{opacity:0;transform:scale(.85) rotate(-8deg);}to{opacity:1;transform:scale(1) rotate(0);}}
+  .pie.spin-in{animation:pieIn .6s var(--ease);}
+
+  .empty{display:flex;align-items:center;gap:8px;}
+  .empty::before{content:'◌';color:var(--text-faint);animation:spin 2.5s linear infinite;display:inline-block;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  @media (prefers-reduced-motion: reduce){
+    *,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important;}
+  }
 </style>
 
 </head>
@@ -512,6 +574,7 @@
 
   <div class="save-note" id="saveNote">Saved automatically as you go.</div>
 </div>
+<div id="toastWrap"></div>
 
 <script>
 // ---- Paste your Firebase project config here (from Firebase Console > Project Settings) ----
@@ -670,6 +733,16 @@ function migrateState(){
 }
 
 let saveTimer = null;
+function showToast(msg, isErr){
+  const wrap = document.getElementById('toastWrap');
+  if(!wrap) return;
+  const t = document.createElement('div');
+  t.className = 'toast' + (isErr ? ' err' : '');
+  t.textContent = msg;
+  wrap.appendChild(t);
+  setTimeout(()=>{ t.remove(); }, 2600);
+}
+
 async function saveState(){
   clearTimeout(saveTimer);
   return new Promise(resolve=>{
@@ -681,9 +754,11 @@ async function saveState(){
         await docRef().set(state);
         const n = document.getElementById('saveNote');
         if(n) n.textContent = 'Synced · ' + new Date().toLocaleTimeString();
+        showToast('Synced to all your devices');
       }catch(e){
         const n = document.getElementById('saveNote');
         if(n) n.textContent = 'Saved on this device — will sync once you\'re back online.';
+        showToast('Saved locally — will sync when back online', true);
       }
       resolve();
     }, 300);
@@ -819,14 +894,30 @@ function renderBudgetInputs(){
 }
 function setBudget(cat, v){ state.budgets[cat] = parseFloat(v)||0; saveState(); render(); }
 
+let editTarget = null; // {kind, index, cat}
+function startEdit(kind, index, cat){ editTarget = {kind, index, cat: cat||null}; render(); }
+function cancelEdit(){ editTarget = null; render(); }
+function isEditing(kind, index, cat){
+  return editTarget && editTarget.kind===kind && editTarget.index===index && editTarget.cat===(cat||null);
+}
+
 function renderIncome(){
   const tb = document.getElementById('incomeTable');
   const m = curMonth();
   if(!m.income.length){ tb.innerHTML = '<tr><td class="empty">No earnings logged yet for this month.</td></tr>'; return; }
   let html = '<tr><th>Date</th><th>Source</th><th>Amount</th><th></th></tr>';
   m.income.forEach((e,i)=>{
-    html += `<tr><td>${e.date}</td><td class="note">${e.source||'—'}</td><td class="amt">${fmt(e.amount)}</td>
-      <td><button class="ghost danger" onclick="removeIncome(${i})">remove</button></td></tr>`;
+    if(isEditing('income', i)){
+      html += `<tr><td><input type="date" id="editIncDate" value="${e.date}"></td>
+        <td><input type="text" id="editIncSrc" value="${e.source||''}"></td>
+        <td><input type="number" id="editIncAmt" value="${e.amount}" style="width:90px;"></td>
+        <td><div class="actions" style="display:flex;flex-wrap:wrap;gap:6px;"><button class="add" style="padding:6px 10px;font-size:12px;" onclick="saveIncomeEdit(${i})">save</button>
+        <button class="ghost" onclick="cancelEdit()">cancel</button></div></td></tr>`;
+    } else {
+      html += `<tr><td>${e.date}</td><td class="note">${e.source||'—'}</td><td class="amt">${fmt(e.amount)}</td>
+        <td><div class="actions" style="display:flex;flex-wrap:wrap;gap:6px;"><button class="ghost" onclick="startEdit('income',${i})">edit</button>
+        <button class="ghost danger" onclick="removeIncome(${i})">remove</button></div></td></tr>`;
+    }
   });
   const total = m.income.reduce((s,e)=>s+e.amount,0);
   html += `<tr class="row-total"><td colspan="2">Total earnings</td><td class="amt">${fmt(total)}</td><td></td></tr>`;
@@ -839,8 +930,17 @@ function renderCategoryTable(cat){
   if(!list.length){ tb.innerHTML = '<tr><td class="empty">Nothing logged yet.</td></tr>'; return; }
   let html = '<tr><th>Date</th><th>Note</th><th>Amount</th><th></th></tr>';
   list.forEach((e,i)=>{
-    html += `<tr><td>${e.date}</td><td class="note">${e.note||'—'}</td><td class="amt">${fmt(e.amount)}</td>
-      <td><button class="ghost danger" onclick="removeExpense('${cat}',${i})">remove</button></td></tr>`;
+    if(isEditing('expense', i, cat)){
+      html += `<tr><td><input type="date" id="editExpDate" value="${e.date}"></td>
+        <td><input type="text" id="editExpNote" value="${e.note||''}"></td>
+        <td><input type="number" id="editExpAmt" value="${e.amount}" style="width:90px;"></td>
+        <td><div class="actions" style="display:flex;flex-wrap:wrap;gap:6px;"><button class="add" style="padding:6px 10px;font-size:12px;" onclick="saveExpenseEdit('${cat}',${i})">save</button>
+        <button class="ghost" onclick="cancelEdit()">cancel</button></div></td></tr>`;
+    } else {
+      html += `<tr><td>${e.date}</td><td class="note">${e.note||'—'}</td><td class="amt">${fmt(e.amount)}</td>
+        <td><div class="actions" style="display:flex;flex-wrap:wrap;gap:6px;"><button class="ghost" onclick="startEdit('expense',${i},'${cat}')">edit</button>
+        <button class="ghost danger" onclick="removeExpense('${cat}',${i})">remove</button></div></td></tr>`;
+    }
   });
   const total = list.reduce((s,e)=>s+e.amount,0);
   html += `<tr class="row-total"><td colspan="2">Total</td><td class="amt">${fmt(total)}</td><td></td></tr>`;
@@ -855,8 +955,17 @@ function renderCigs(){
   else {
     let html = '<tr><th>Date</th><th>Note</th><th>Amount</th><th></th></tr>';
     list.forEach((e,i)=>{
-      html += `<tr><td>${e.date}</td><td class="note">${e.note||'—'}</td><td class="amt">${fmt(e.amount)}</td>
-        <td><button class="ghost danger" onclick="removeCig(${i})">remove</button></td></tr>`;
+      if(isEditing('cig', i)){
+        html += `<tr><td><input type="date" id="editCigDate" value="${e.date}"></td>
+          <td><input type="text" id="editCigNote" value="${e.note||''}"></td>
+          <td><input type="number" id="editCigAmt" value="${e.amount}" style="width:90px;"></td>
+          <td><div class="actions" style="display:flex;flex-wrap:wrap;gap:6px;"><button class="add" style="padding:6px 10px;font-size:12px;" onclick="saveCigEdit(${i})">save</button>
+          <button class="ghost" onclick="cancelEdit()">cancel</button></div></td></tr>`;
+      } else {
+        html += `<tr><td>${e.date}</td><td class="note">${e.note||'—'}</td><td class="amt">${fmt(e.amount)}</td>
+          <td><div class="actions" style="display:flex;flex-wrap:wrap;gap:6px;"><button class="ghost" onclick="startEdit('cig',${i})">edit</button>
+          <button class="ghost danger" onclick="removeCig(${i})">remove</button></div></td></tr>`;
+      }
     });
     tb.innerHTML = html;
   }
@@ -924,11 +1033,23 @@ function renderIOUs(){
   if(!state.people.length){ tb.innerHTML = '<tr><td class="empty">Nothing recorded yet.</td></tr>'; return; }
   let html = '<tr><th>Person</th><th>Type</th><th>Date</th><th>Note</th><th>Amount</th><th>Status</th><th></th></tr>';
   state.people.forEach((p,i)=>{
-    html += `<tr><td>${p.name}</td><td>${p.type==='lent'?'They owe you':'You owe them'}</td><td>${p.date}</td>
-      <td class="note">${p.note||'—'}</td><td class="amt">${fmt(p.amount)}</td>
-      <td>${p.status==='settled'?'<span class="pill settled">settled</span>':'<span class="pill pending">pending</span>'}</td>
-      <td><div class="actions" style="display:flex;flex-wrap:wrap;gap:6px;"><button class="ghost" onclick="toggleIOU(${i})">${p.status==='settled'?'reopen':'settle'}</button>
-      <button class="ghost danger" onclick="removeIOU(${i})">remove</button></div></td></tr>`;
+    if(isEditing('iou', i)){
+      html += `<tr><td><input type="text" id="editIouPerson" value="${p.name}" style="width:90px;"></td>
+        <td><select id="editIouType"><option value="borrowed" ${p.type==='borrowed'?'selected':''}>I borrowed</option><option value="lent" ${p.type==='lent'?'selected':''}>I lent</option></select></td>
+        <td><input type="date" id="editIouDate" value="${p.date}"></td>
+        <td><input type="text" id="editIouNote" value="${p.note||''}" style="width:110px;"></td>
+        <td><input type="number" id="editIouAmt" value="${p.amount}" style="width:80px;"></td>
+        <td>${p.status==='settled'?'<span class="pill settled">settled</span>':'<span class="pill pending">pending</span>'}</td>
+        <td><div class="actions" style="display:flex;flex-wrap:wrap;gap:6px;"><button class="add" style="padding:6px 10px;font-size:12px;" onclick="saveIOUEdit(${i})">save</button>
+        <button class="ghost" onclick="cancelEdit()">cancel</button></div></td></tr>`;
+    } else {
+      html += `<tr><td>${p.name}</td><td>${p.type==='lent'?'They owe you':'You owe them'}</td><td>${p.date}</td>
+        <td class="note">${p.note||'—'}</td><td class="amt">${fmt(p.amount)}</td>
+        <td>${p.status==='settled'?'<span class="pill settled">settled</span>':'<span class="pill pending">pending</span>'}</td>
+        <td><div class="actions" style="display:flex;flex-wrap:wrap;gap:6px;"><button class="ghost" onclick="startEdit('iou',${i})">edit</button>
+        <button class="ghost" onclick="toggleIOU(${i})">${p.status==='settled'?'reopen':'settle'}</button>
+        <button class="ghost danger" onclick="removeIOU(${i})">remove</button></div></td></tr>`;
+    }
   });
   tb.innerHTML = html;
 }
@@ -939,8 +1060,17 @@ function renderSavings(){
   if(!list.length){ tb.innerHTML = '<tr><td class="empty">No movements yet this month.</td></tr>'; return; }
   let html = '<tr><th>Date</th><th>Type</th><th>Amount</th><th></th></tr>';
   list.forEach((e,i)=>{
-    html += `<tr><td>${e.date}</td><td>${e.type==='deposit'?'Deposit':'Withdraw'}</td><td class="amt">${fmt(e.amount)}</td>
-      <td><button class="ghost danger" onclick="removeSavingsMove(${i})">remove</button></td></tr>`;
+    if(isEditing('savings', i)){
+      html += `<tr><td><input type="date" id="editSavDate" value="${e.date}"></td>
+        <td><select id="editSavType"><option value="deposit" ${e.type==='deposit'?'selected':''}>Deposit</option><option value="withdraw" ${e.type==='withdraw'?'selected':''}>Withdraw</option></select></td>
+        <td><input type="number" id="editSavAmt" value="${e.amount}" style="width:90px;"></td>
+        <td><div class="actions" style="display:flex;flex-wrap:wrap;gap:6px;"><button class="add" style="padding:6px 10px;font-size:12px;" onclick="saveSavingsEdit(${i})">save</button>
+        <button class="ghost" onclick="cancelEdit()">cancel</button></div></td></tr>`;
+    } else {
+      html += `<tr><td>${e.date}</td><td>${e.type==='deposit'?'Deposit':'Withdraw'}</td><td class="amt">${fmt(e.amount)}</td>
+        <td><div class="actions" style="display:flex;flex-wrap:wrap;gap:6px;"><button class="ghost" onclick="startEdit('savings',${i})">edit</button>
+        <button class="ghost danger" onclick="removeSavingsMove(${i})">remove</button></div></td></tr>`;
+    }
   });
   tb.innerHTML = html;
 }
@@ -965,6 +1095,9 @@ function renderPie(){
     return `${CAT_COLORS[s.cat]} ${start}deg ${end}deg`;
   });
   pie.style.background = `conic-gradient(${stops.join(',')})`;
+  pie.classList.remove('spin-in');
+  void pie.offsetWidth; // force reflow so animation re-triggers
+  pie.classList.add('spin-in');
   legend.innerHTML = slices.sort((a,b)=>b.amt-a.amt)
     .map(s=>`<div class="item"><span class="sw" style="background:${CAT_COLORS[s.cat]}"></span>${CAT_LABELS[s.cat]}<span class="pct">${Math.round(s.amt/total*100)}% · ${fmt(s.amt)}</span></div>`)
     .join('');
@@ -1038,13 +1171,18 @@ function renderBalanceChart(){
   }
   svg.innerHTML = `
     <defs><linearGradient id="balGrad" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#33E1A0" stop-opacity="0.35"/>
-      <stop offset="100%" stop-color="#33E1A0" stop-opacity="0"/>
+      <stop offset="0%" stop-color="#3DECA5" stop-opacity="0.32"/>
+      <stop offset="100%" stop-color="#3DECA5" stop-opacity="0"/>
     </linearGradient></defs>
     ${gridLines}
     <path d="${areaPath}" fill="url(#balGrad)" stroke="none"/>
-    <path d="${path}" fill="none" stroke="#33E1A0" stroke-width="2"/>
+    <path class="draw" id="balLinePath" d="${path}" fill="none" stroke="#3DECA5" stroke-width="2.2" stroke-linecap="round"/>
   `;
+  const linePath = document.getElementById('balLinePath');
+  if(linePath){
+    const len = linePath.getTotalLength();
+    linePath.style.setProperty('--len', len);
+  }
 }
 
 function renderSummary(){
@@ -1085,6 +1223,17 @@ function renderHistory(){
   tb.innerHTML = html;
 }
 
+function flashLastRow(tableId, hasTotalRow){
+  requestAnimationFrame(()=>{
+    const tb = document.getElementById(tableId);
+    if(!tb) return;
+    const rows = tb.querySelectorAll('tr');
+    const idx = hasTotalRow ? rows.length-2 : rows.length-1;
+    const row = rows[idx];
+    if(row){ row.classList.add('row-flash'); setTimeout(()=>row.classList.remove('row-flash'), 1200); }
+  });
+}
+
 function addIncome(){
   const date = document.getElementById('incDate').value || todayStr();
   const amt = parseFloat(document.getElementById('incAmt').value);
@@ -1092,9 +1241,17 @@ function addIncome(){
   if(!amt || amt<=0) return;
   curMonth().income.push({date, amount:amt, source:src});
   document.getElementById('incAmt').value=''; document.getElementById('incSrc').value='';
-  saveState(); render();
+  saveState(); render(); flashLastRow('incomeTable', true);
 }
 function removeIncome(i){ curMonth().income.splice(i,1); saveState(); render(); }
+function saveIncomeEdit(i){
+  const date = document.getElementById('editIncDate').value;
+  const src = document.getElementById('editIncSrc').value.trim();
+  const amt = parseFloat(document.getElementById('editIncAmt').value);
+  if(!amt || amt<=0) return;
+  curMonth().income[i] = {date, amount:amt, source:src};
+  editTarget = null; saveState(); render();
+}
 function setOpening(v){ curMonth().opening = parseFloat(v)||0; saveState(); render(); }
 
 function addExpense(){
@@ -1105,9 +1262,17 @@ function addExpense(){
   if(!amt || amt<=0) return;
   curMonth().expenses[cat].push({date, amount:amt, note});
   document.getElementById('expAmt').value=''; document.getElementById('expNote').value='';
-  saveState(); render();
+  saveState(); render(); flashLastRow('table-'+cat, true);
 }
 function removeExpense(cat,i){ curMonth().expenses[cat].splice(i,1); saveState(); render(); }
+function saveExpenseEdit(cat,i){
+  const date = document.getElementById('editExpDate').value;
+  const note = document.getElementById('editExpNote').value.trim();
+  const amt = parseFloat(document.getElementById('editExpAmt').value);
+  if(!amt || amt<=0) return;
+  curMonth().expenses[cat][i] = {date, amount:amt, note};
+  editTarget = null; saveState(); render();
+}
 
 function addCig(){
   const date = document.getElementById('cigDate').value || todayStr();
@@ -1116,9 +1281,17 @@ function addCig(){
   if(!amt || amt<=0) return;
   curMonth().cigarettes.push({date, amount:amt, note});
   document.getElementById('cigAmt').value=''; document.getElementById('cigNote').value='';
-  saveState(); render();
+  saveState(); render(); flashLastRow('cigTable', false);
 }
 function removeCig(i){ curMonth().cigarettes.splice(i,1); saveState(); render(); }
+function saveCigEdit(i){
+  const date = document.getElementById('editCigDate').value;
+  const note = document.getElementById('editCigNote').value.trim();
+  const amt = parseFloat(document.getElementById('editCigAmt').value);
+  if(!amt || amt<=0) return;
+  curMonth().cigarettes[i] = {date, amount:amt, note};
+  editTarget = null; saveState(); render();
+}
 
 function addBill(){
   const name = document.getElementById('billName').value.trim();
@@ -1127,7 +1300,7 @@ function addBill(){
   if(!name || !day || day<1 || day>31 || !budget) return;
   state.bills.push({id:uid(), name, day, budget});
   document.getElementById('billName').value=''; document.getElementById('billDay').value=''; document.getElementById('billBudget').value='';
-  saveState(); render();
+  saveState(); render(); flashLastRow('billsTable', false);
 }
 function removeBill(id){
   state.bills = state.bills.filter(b=>b.id!==id);
@@ -1164,10 +1337,20 @@ function addIOU(){
   if(!name || !amt || amt<=0) return;
   state.people.push({name, type, amount:amt, date, note, status:'pending'});
   document.getElementById('iouPerson').value=''; document.getElementById('iouAmt').value=''; document.getElementById('iouNote').value='';
-  saveState(); render();
+  saveState(); render(); flashLastRow('iouTable', false);
 }
 function toggleIOU(i){ state.people[i].status = state.people[i].status==='settled' ? 'pending':'settled'; saveState(); render(); }
 function removeIOU(i){ state.people.splice(i,1); saveState(); render(); }
+function saveIOUEdit(i){
+  const name = document.getElementById('editIouPerson').value.trim();
+  const type = document.getElementById('editIouType').value;
+  const date = document.getElementById('editIouDate').value;
+  const note = document.getElementById('editIouNote').value.trim();
+  const amt = parseFloat(document.getElementById('editIouAmt').value);
+  if(!name || !amt || amt<=0) return;
+  state.people[i] = {...state.people[i], name, type, date, note, amount:amt};
+  editTarget = null; saveState(); render();
+}
 
 function addSavingsMove(){
   const type = document.getElementById('savType').value;
@@ -1177,13 +1360,24 @@ function addSavingsMove(){
   curMonth().savingsMoves.push({type, date, amount:amt});
   if(type==='deposit') state.savingsTotal += amt; else state.savingsTotal -= amt;
   document.getElementById('savAmt').value='';
-  saveState(); render();
+  saveState(); render(); flashLastRow('savTable', false);
 }
 function removeSavingsMove(i){
   const mv = curMonth().savingsMoves[i];
   if(mv.type==='deposit') state.savingsTotal -= mv.amount; else state.savingsTotal += mv.amount;
   curMonth().savingsMoves.splice(i,1);
   saveState(); render();
+}
+function saveSavingsEdit(i){
+  const date = document.getElementById('editSavDate').value;
+  const type = document.getElementById('editSavType').value;
+  const amt = parseFloat(document.getElementById('editSavAmt').value);
+  if(!amt || amt<=0) return;
+  const old = curMonth().savingsMoves[i];
+  if(old.type==='deposit') state.savingsTotal -= old.amount; else state.savingsTotal += old.amount;
+  if(type==='deposit') state.savingsTotal += amt; else state.savingsTotal -= amt;
+  curMonth().savingsMoves[i] = {date, type, amount:amt};
+  editTarget = null; saveState(); render();
 }
 
 function closeMonth(){
