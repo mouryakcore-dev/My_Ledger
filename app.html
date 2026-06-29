@@ -1,0 +1,1095 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>The Ledger — money command center</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0A0D11">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Ledger">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0A0D11;
+    --panel:#11151B;
+    --panel-raised:#151A21;
+    --line:#232B35;
+    --text:#E8ECF1;
+    --text-soft:#8A93A1;
+    --text-faint:#5A6270;
+    --green:#33E1A0; --green-dim:#0F3D30;
+    --red:#FF5470; --red-dim:#3D1420;
+    --purple:#B58CFF; --purple-dim:#2A1F47;
+    --gold:#FFCD4B; --gold-dim:#3D3008;
+    --teal:#3CC7E0; --teal-dim:#10333B;
+    --amber:#FFA94D; --amber-dim:#3D2A0F;
+    --radius:12px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;background:var(--bg);color:var(--text);
+    font-family:'Inter',sans-serif;-webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:920px;margin:0 auto;padding:24px 18px 80px;}
+  .masthead{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:18px;flex-wrap:wrap;gap:10px;}
+  .masthead h1{
+    font-family:'Sora',sans-serif;font-weight:700;font-size:24px;margin:0;
+    letter-spacing:.2px;
+  }
+  .masthead h1 .accent{color:var(--green);}
+  .masthead .sub{font-size:11px;color:var(--text-faint);letter-spacing:1px;text-transform:uppercase;margin-top:3px;}
+  .month-control{display:flex;align-items:center;gap:8px;}
+  .month-control select{
+    font-family:'IBM Plex Mono',monospace;font-size:12px;padding:8px 10px;
+    background:var(--panel-raised);border:1px solid var(--line);border-radius:8px;color:var(--text);
+  }
+  .month-control button{
+    font-family:'Inter',sans-serif;font-size:12px;padding:8px 12px;border-radius:8px;
+    border:1px solid var(--green);background:transparent;color:var(--green);cursor:pointer;
+  }
+
+  .stamp-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:0 0 18px;}
+  @media(max-width:700px){.stamp-row{grid-template-columns:repeat(2,1fr);}}
+  .stamp{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px 14px;}
+  .stamp .label{font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--text-faint);}
+  .stamp .value{font-family:'IBM Plex Mono',monospace;font-size:19px;font-weight:600;margin-top:5px;}
+  .stamp.bal{border-color:var(--green);}
+  .stamp.bal .value{color:var(--green);}
+  .stamp.sav{border-color:var(--teal);}
+  .stamp.sav .value{color:var(--teal);}
+  .stamp.debt{border-color:var(--gold);}
+  .stamp.debt .value{color:var(--gold);}
+  .stamp.bills{border-color:var(--purple);}
+  .stamp.bills .value{color:var(--purple);}
+
+  .iou-banner{
+    display:none;border:1px solid var(--amber);background:var(--amber-dim);border-radius:var(--radius);
+    padding:10px 14px;margin-bottom:16px;font-size:13px;color:var(--amber);
+  }
+  .iou-banner.show{display:block;}
+  .iou-banner span{cursor:pointer;text-decoration:underline;color:var(--text);}
+  .iou-banner b{font-family:'IBM Plex Mono',monospace;}
+
+  nav.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin-bottom:18px;overflow-x:auto;}
+  nav.tabs button{
+    font-family:'Inter',sans-serif;font-size:13px;padding:10px 13px;background:none;border:none;
+    color:var(--text-faint);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;
+  }
+  nav.tabs button.active{color:var(--text);border-bottom-color:var(--green);font-weight:600;}
+
+  section.panel{display:none;}
+  section.panel.active{display:block;}
+
+  .panel-block{
+    background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+    padding:16px 18px;margin-bottom:16px;
+  }
+  .panel-block.accent-green{border-color:var(--green);}
+  .panel-block.accent-red{border-color:var(--red);}
+  .panel-block.accent-purple{border-color:var(--purple);}
+  .panel-block.accent-gold{border-color:var(--gold);}
+  .panel-block.accent-teal{border-color:var(--teal);}
+  .panel-block.accent-amber{border-color:var(--amber);}
+
+  .panel-block h2{
+    font-family:'Sora',sans-serif;font-size:15px;margin:0 0 4px;font-weight:600;
+    text-transform:uppercase;letter-spacing:.5px;
+  }
+  .accent-green h2{color:var(--green);}
+  .accent-red h2{color:var(--red);}
+  .accent-purple h2{color:var(--purple);}
+  .accent-gold h2{color:var(--gold);}
+  .accent-teal h2{color:var(--teal);}
+  .accent-amber h2{color:var(--amber);}
+  .panel-block .hint{font-size:12px;color:var(--text-soft);margin:0 0 14px;}
+  .panel-block h3{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-faint);margin:18px 0 8px;}
+
+  .grid{display:grid;gap:10px;}
+  .grid.cols-2{grid-template-columns:1fr 1fr;}
+  .grid.cols-3{grid-template-columns:1fr 1fr 1fr;}
+  .grid.cols-4{grid-template-columns:1fr 1fr 1fr 1fr;}
+  @media(max-width:600px){.grid.cols-2,.grid.cols-3,.grid.cols-4{grid-template-columns:1fr;}}
+
+  label{font-size:11px;color:var(--text-faint);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px;}
+  input,select,textarea{
+    width:100%;font-family:'Inter',sans-serif;font-size:13px;padding:8px 10px;
+    border:1px solid var(--line);border-radius:7px;background:var(--bg);color:var(--text);
+  }
+  input::placeholder{color:var(--text-faint);}
+  input[type="number"]{font-family:'IBM Plex Mono',monospace;}
+  input[type="date"]{color-scheme:dark;}
+  textarea{resize:vertical;min-height:36px;}
+  .field{margin-bottom:10px;}
+
+  button.add{
+    font-family:'Inter',sans-serif;font-size:13px;font-weight:600;padding:9px 16px;
+    background:var(--green);color:#06140F;border:none;border-radius:7px;cursor:pointer;
+  }
+  button.ghost{
+    font-family:'Inter',sans-serif;font-size:11px;padding:6px 10px;background:none;
+    border:1px solid var(--line);border-radius:7px;cursor:pointer;color:var(--text-soft);
+  }
+  button.danger{color:var(--red);border-color:var(--red-dim);}
+
+  table.ledger{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:4px;}
+  table.ledger th{
+    text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:var(--text-faint);
+    border-bottom:1px solid var(--line);padding:7px 4px;
+  }
+  table.ledger td{padding:8px 4px;border-bottom:1px solid var(--line);vertical-align:top;color:var(--text);}
+  table.ledger tr:last-child td{border-bottom:none;}
+  table.ledger td.amt{font-family:'IBM Plex Mono',monospace;text-align:right;white-space:nowrap;}
+  table.ledger td.note{color:var(--text-soft);}
+  .row-total{font-weight:600;}
+  .row-total td{color:var(--text);}
+
+  .pill{display:inline-block;font-size:10px;padding:3px 9px;border-radius:20px;font-family:'IBM Plex Mono',monospace;}
+  .pill.paid{background:var(--green-dim);color:var(--green);}
+  .pill.due{background:var(--gold-dim);color:var(--gold);}
+  .pill.overdue{background:var(--red-dim);color:var(--red);}
+  .pill.settled{background:var(--green-dim);color:var(--green);}
+  .pill.pending{background:var(--amber-dim);color:var(--amber);}
+
+  .chk{width:17px;height:17px;cursor:pointer;accent-color:var(--green);}
+
+  .bvabar{height:6px;border-radius:4px;background:var(--line);overflow:hidden;margin-top:4px;}
+  .bvabar .fill{height:100%;border-radius:4px;}
+  .bva-row{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;margin-bottom:2px;}
+  .bva-row .nm{color:var(--text);}
+  .bva-row .nums{font-family:'IBM Plex Mono',monospace;color:var(--text-soft);}
+  .bva-card{margin-bottom:14px;}
+
+  .pie-wrap{display:flex;gap:24px;align-items:center;flex-wrap:wrap;margin-top:6px;}
+  .pie{width:160px;height:160px;border-radius:50%;flex-shrink:0;}
+  .legend{flex:1;min-width:180px;display:flex;flex-direction:column;gap:6px;}
+  .legend .item{display:flex;align-items:center;gap:8px;font-size:12.5px;}
+  .legend .sw{width:10px;height:10px;border-radius:3px;flex-shrink:0;}
+  .legend .pct{font-family:'IBM Plex Mono',monospace;margin-left:auto;color:var(--text-soft);}
+
+  .loan-group{margin-bottom:18px;}
+  .loan-group .head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;}
+  .loan-group .head .name{font-weight:600;font-size:13px;}
+  .loan-group .head .meta{font-size:11px;color:var(--text-faint);font-family:'IBM Plex Mono',monospace;}
+
+  .empty{font-size:12.5px;color:var(--text-faint);font-style:italic;padding:10px 0;}
+
+  .closebar{
+    display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;
+    background:var(--green-dim);border:1px solid var(--green);border-radius:var(--radius);
+    padding:14px 16px;margin-top:6px;
+  }
+  .closebar .txt{font-size:12.5px;color:var(--green);}
+  .closebar button{
+    font-family:'Inter',sans-serif;font-size:13px;font-weight:600;padding:9px 16px;
+    background:var(--green);color:#06140F;border:none;border-radius:7px;cursor:pointer;white-space:nowrap;
+  }
+  .save-note{font-size:11px;color:var(--text-faint);text-align:center;margin-top:24px;}
+  .subgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  @media(max-width:700px){.subgrid{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="masthead">
+    <div>
+      <h1>The <span class="accent">Ledger</span></h1>
+      <div class="sub">money command center</div>
+    </div>
+    <div class="month-control">
+      <select id="monthSelect"></select>
+      <button id="newMonthBtn">+ new month</button>
+    </div>
+  </div>
+
+  <div class="iou-banner" id="iouBanner"></div>
+
+  <div class="stamp-row">
+    <div class="stamp bal"><div class="label">Cash in hand</div><div class="value" id="stampBalance">₹0</div></div>
+    <div class="stamp sav"><div class="label">Total saved</div><div class="value" id="stampSavings">₹0</div></div>
+    <div class="stamp bills"><div class="label">Bills due this month</div><div class="value" id="stampBills">₹0</div></div>
+    <div class="stamp debt"><div class="label">Debt due this month</div><div class="value" id="stampDebtMonth">₹0</div></div>
+  </div>
+
+  <nav class="tabs" id="tabs">
+    <button data-panel="dashboard" class="active">Dashboard</button>
+    <button data-panel="income">Income</button>
+    <button data-panel="expenses">Expenses</button>
+    <button data-panel="cigs">Cigarettes</button>
+    <button data-panel="bills">Bills</button>
+    <button data-panel="debts">Debts</button>
+    <button data-panel="people">IOUs</button>
+    <button data-panel="savings">Savings</button>
+    <button data-panel="history">History</button>
+    <button data-panel="backup">Backup</button>
+  </nav>
+
+  <section class="panel active" id="panel-dashboard">
+    <div class="panel-block accent-green">
+      <h2>Balance overview</h2>
+      <p class="hint">Running cash balance across the month, day by day.</p>
+      <svg id="balanceChart" viewBox="0 0 600 200" style="width:100%;height:180px;display:block;"></svg>
+    </div>
+    <div class="subgrid">
+      <div class="panel-block accent-red">
+        <h2>Where it went</h2>
+        <div class="pie-wrap">
+          <div class="pie" id="pieChart"></div>
+          <div class="legend" id="pieLegend"></div>
+        </div>
+      </div>
+      <div class="panel-block accent-purple">
+        <h2>Budget vs actual</h2>
+        <p class="hint">Set targets once — they carry forward every month.</p>
+        <div id="bvaList"></div>
+      </div>
+    </div>
+    <div class="panel-block accent-teal">
+      <h2>Opening → closing</h2>
+      <table class="ledger" id="summaryTable"></table>
+    </div>
+    <div class="panel-block accent-green">
+      <h2>Close this month</h2>
+      <p class="hint">Closing balance becomes next month's opening balance. Savings total carries forward on its own.</p>
+      <div class="closebar">
+        <div class="txt" id="closeText">Closing balance will carry forward.</div>
+        <button id="closeMonthBtn">Close &amp; carry forward</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" id="panel-income">
+    <div class="panel-block accent-green">
+      <h2>Set income targets</h2>
+      <p class="hint">Your expected monthly income — compared against what actually lands.</p>
+      <div class="grid cols-2" style="max-width:420px;">
+        <div class="field"><label>Monthly income budget (₹)</label><input type="number" id="budgetIncome" onchange="setBudget('income',this.value)"></div>
+        <div class="field"><label>Opening balance (₹)</label><input type="number" id="openingInput" onchange="setOpening(this.value)"></div>
+      </div>
+    </div>
+    <div class="panel-block accent-green">
+      <h2>Earnings this month</h2>
+      <p class="hint">Log every credit — salary, freelance, refunds — with the date it landed.</p>
+      <div class="grid cols-3">
+        <div class="field"><label>Date</label><input type="date" id="incDate"></div>
+        <div class="field"><label>Amount (₹)</label><input type="number" id="incAmt" placeholder="0"></div>
+        <div class="field"><label>Source</label><input type="text" id="incSrc" placeholder="e.g. Salary, Freelance"></div>
+      </div>
+      <button class="add" onclick="addIncome()">Add earning</button>
+      <table class="ledger" id="incomeTable"></table>
+    </div>
+  </section>
+
+  <section class="panel" id="panel-expenses">
+    <div class="panel-block accent-red">
+      <h2>Log a spend</h2>
+      <p class="hint">Entertainment and misc want a quick note on what it actually was — that's the whole point of auditing.</p>
+      <div class="grid cols-2">
+        <div class="field"><label>Category</label>
+          <select id="expCat">
+            <option value="food">Food</option>
+            <option value="travel">Travel</option>
+            <option value="entertainment">Entertainment</option>
+            <option value="gym">Gym / subscriptions</option>
+            <option value="purchases">Purchases</option>
+            <option value="misc">Miscellaneous</option>
+          </select>
+        </div>
+        <div class="field"><label>Date</label><input type="date" id="expDate"></div>
+        <div class="field"><label>Amount (₹)</label><input type="number" id="expAmt" placeholder="0"></div>
+        <div class="field"><label>Note — what was it for?</label><input type="text" id="expNote" placeholder="e.g. movies with friends, gym monthly fee"></div>
+      </div>
+      <button class="add" onclick="addExpense()">Add spend</button>
+    </div>
+    <div class="panel-block accent-red">
+      <h2>Budget targets per category</h2>
+      <div class="grid cols-3" id="catBudgetInputs"></div>
+    </div>
+    <div class="panel-block accent-red"><h2>Food</h2><table class="ledger" id="table-food"></table></div>
+    <div class="panel-block accent-red"><h2>Travel</h2><table class="ledger" id="table-travel"></table></div>
+    <div class="panel-block accent-red"><h2>Entertainment</h2><p class="hint">What you did to enjoy yourself, not just what it cost.</p><table class="ledger" id="table-entertainment"></table></div>
+    <div class="panel-block accent-red"><h2>Gym &amp; subscriptions</h2><table class="ledger" id="table-gym"></table></div>
+    <div class="panel-block accent-red"><h2>Purchases</h2><p class="hint">Things you bought — clothes, gadgets, household items.</p><table class="ledger" id="table-purchases"></table></div>
+    <div class="panel-block accent-red"><h2>Miscellaneous</h2><table class="ledger" id="table-misc"></table></div>
+  </section>
+
+  <section class="panel" id="panel-cigs">
+    <div class="panel-block accent-amber">
+      <h2>Cigarettes</h2>
+      <p class="hint">Logged separately on purpose — daily entries so the real monthly cost stops hiding inside "miscellaneous".</p>
+      <div class="grid cols-3">
+        <div class="field"><label>Date</label><input type="date" id="cigDate"></div>
+        <div class="field"><label>Amount (₹)</label><input type="number" id="cigAmt" placeholder="0"></div>
+        <div class="field"><label>Note (optional)</label><input type="text" id="cigNote" placeholder="e.g. pack, loose sticks"></div>
+      </div>
+      <button class="add" onclick="addCig()">Add entry</button>
+      <h3>This month's total</h3>
+      <div class="value" id="cigTotal" style="font-family:'IBM Plex Mono',monospace;font-size:18px;color:var(--amber);"></div>
+      <table class="ledger" id="cigTable"></table>
+    </div>
+  </section>
+
+  <section class="panel" id="panel-bills">
+    <div class="panel-block accent-purple">
+      <h2>Recurring bills</h2>
+      <p class="hint">Fixed monthly costs — rent, phone, internet, EMIs outside Slice/Mpokket. Add the bill once, then tick it off each month.</p>
+      <div class="grid cols-3">
+        <div class="field"><label>Bill name</label><input type="text" id="billName" placeholder="e.g. Rent, Wifi"></div>
+        <div class="field"><label>Due day of month</label><input type="number" id="billDay" min="1" max="31" placeholder="e.g. 5"></div>
+        <div class="field"><label>Budgeted amount (₹)</label><input type="number" id="billBudget" placeholder="0"></div>
+      </div>
+      <button class="add" onclick="addBill()">Add bill</button>
+      <table class="ledger" id="billsTable"></table>
+    </div>
+  </section>
+
+  <section class="panel" id="panel-debts">
+    <div class="panel-block accent-gold">
+      <h2>Slice &amp; Mpokket — installment schedule</h2>
+      <p class="hint">Pre-loaded from what you gave me. Tick an installment off as you pay it — it counts as a debt payment for whichever month you're in.</p>
+      <div id="loanGroups"></div>
+    </div>
+  </section>
+
+  <section class="panel" id="panel-people">
+    <div class="panel-block accent-amber">
+      <h2>Money lent or borrowed (people, not apps)</h2>
+      <p class="hint">Anything you owe someone, or someone owes you. Stays highlighted on the dashboard until it's settled.</p>
+      <div class="grid cols-3">
+        <div class="field"><label>Person</label><input type="text" id="iouPerson" placeholder="Name"></div>
+        <div class="field"><label>Type</label>
+          <select id="iouType"><option value="borrowed">I borrowed from them</option><option value="lent">I lent to them</option></select>
+        </div>
+        <div class="field"><label>Amount (₹)</label><input type="number" id="iouAmt" placeholder="0"></div>
+        <div class="field"><label>Date</label><input type="date" id="iouDate"></div>
+        <div class="field"><label>Note (optional)</label><input type="text" id="iouNote" placeholder="why / for what"></div>
+      </div>
+      <button class="add" onclick="addIOU()">Add</button>
+      <table class="ledger" id="iouTable"></table>
+    </div>
+  </section>
+
+  <section class="panel" id="panel-savings">
+    <div class="panel-block accent-teal">
+      <h2>Savings</h2>
+      <p class="hint">Deposits reduce this month's cash in hand and add to your total. Withdrawals do the opposite. Your total always carries into next month.</p>
+      <div class="grid cols-3">
+        <div class="field"><label>Type</label><select id="savType"><option value="deposit">Deposit</option><option value="withdraw">Withdraw</option></select></div>
+        <div class="field"><label>Date</label><input type="date" id="savDate"></div>
+        <div class="field"><label>Amount (₹)</label><input type="number" id="savAmt" placeholder="0"></div>
+      </div>
+      <button class="add" onclick="addSavingsMove()">Add</button>
+      <h3>This month's movements</h3>
+      <table class="ledger" id="savTable"></table>
+    </div>
+  </section>
+
+  <section class="panel" id="panel-history">
+    <div class="panel-block accent-teal">
+      <h2>Month-by-month memory</h2>
+      <p class="hint">Every closed month, kept for reference.</p>
+      <table class="ledger" id="historyTable"></table>
+    </div>
+  </section>
+
+  <section class="panel" id="panel-backup">
+    <div class="panel-block accent-green">
+      <h2>Back up to Drive</h2>
+      <p class="hint">This app's data lives only on this phone. Download a backup file regularly and drop it into your Google Drive — if you ever switch phones or clear browser data, you can restore everything from that file.</p>
+      <button class="add" onclick="exportBackup()">Download backup file</button>
+      <p class="hint" style="margin-top:14px;">After downloading, open the Google Drive app, hit the "+", choose Upload, and pick the file from your Downloads folder — that's it, your full spending history is in Drive.</p>
+    </div>
+    <div class="panel-block accent-purple">
+      <h2>Restore from a backup</h2>
+      <p class="hint">Pick a backup file you previously saved to Drive (download it from Drive to your phone first, then select it here). This replaces everything currently in the app.</p>
+      <input type="file" id="restoreFile" accept="application/json">
+      <button class="add" style="margin-top:10px;" onclick="restoreBackup()">Restore from file</button>
+      <div id="restoreMsg" class="hint" style="margin-top:8px;"></div>
+    </div>
+  </section>
+
+  <div class="save-note" id="saveNote">Saved automatically as you go.</div>
+</div>
+
+<script>
+const CAT_COLORS = {
+  food:'#FF5470', travel:'#3CC7E0', entertainment:'#FF8A5C', gym:'#B58CFF', purchases:'#FFCD4B',
+  misc:'#8A93A1', cigarettes:'#FFA94D', debt:'#E0B23C', savings:'#33E1A0', bills:'#B58CFF'
+};
+const CAT_LABELS = {
+  food:'Food', travel:'Travel', entertainment:'Entertainment', gym:'Gym & subscriptions', purchases:'Purchases',
+  misc:'Miscellaneous', cigarettes:'Cigarettes', debt:'Debt payments', savings:'Savings deposits', bills:'Bills'
+};
+const BUDGET_CATS = ['income','food','travel','entertainment','gym','purchases','misc','cigarettes'];
+
+let state = null;
+const STORAGE_KEY = 'ledger-state-v2';
+
+function fmt(n){
+  n = Math.round((n||0)*100)/100;
+  const neg = n < 0;
+  n = Math.abs(n);
+  const s = n.toLocaleString('en-IN', {maximumFractionDigits:2, minimumFractionDigits: n%1===0?0:2});
+  return (neg?'-':'') + '₹' + s;
+}
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+function uid(){ return Math.random().toString(36).slice(2,9); }
+
+function buildLoanSchedule(){
+  const loans = [];
+  function addInstallments(app, name, principal, amounts, dates){
+    dates.forEach((d,i)=>{
+      loans.push({id:uid(), app, name, principal, amount: amounts[i], date:d, paid:false, paidMonthKey:null});
+    });
+  }
+  function sliceDates(n){
+    const arr=[];
+    for(let i=0;i<n;i++){
+      const m = 6+i;
+      const y = 2026 + Math.floor(m/12);
+      const mm = (m%12)+1;
+      arr.push(`${y}-${String(mm).padStart(2,'0')}-05`);
+    }
+    return arr;
+  }
+  addInstallments('Slice','Loan 1 (₹3,852)',3852, Array(12).fill(360.15), sliceDates(12));
+  addInstallments('Slice','Loan 2 (₹367)',367, Array(6).fill(65.15), sliceDates(6));
+  addInstallments('Slice','Loan 3 (₹104) A',104, Array(6).fill(18.44), sliceDates(6));
+  addInstallments('Slice','Loan 4 (₹104) B',104, Array(6).fill(18.44), sliceDates(6));
+  addInstallments('Mpokket','Loan A (₹506)',506,[120,120,120,120],
+    ['2026-08-04','2026-09-04','2026-10-04','2026-11-04']);
+  addInstallments('Mpokket','Loan B (₹1,012)',1012,[240,240,240,240],
+    ['2026-07-27','2026-08-27','2026-09-27','2026-10-27']);
+  addInstallments('Mpokket','Loan C (₹18,165)',18165,
+    [1891,1582,1614,1646,1679,1713,1747,1782,1818,1856],
+    ['2026-07-18','2026-08-18','2026-09-18','2026-10-18','2026-11-18',
+     '2026-12-18','2027-01-18','2027-02-18','2027-03-18','2027-04-18']);
+  return loans;
+}
+
+function blankMonth(opening){
+  return {
+    opening: opening||0,
+    income: [],
+    expenses: {food:[], travel:[], entertainment:[], gym:[], purchases:[], misc:[]},
+    cigarettes: [],
+    savingsMoves: [],
+    billPayments: {},
+    closed: false
+  };
+}
+
+async function loadState(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw){ state = JSON.parse(raw); return; }
+  }catch(e){}
+  state = {
+    months: { '2026-06': blankMonth(0) },
+    currentMonth: '2026-06',
+    loans: buildLoanSchedule(),
+    people: [],
+    savingsTotal: 0,
+    bills: [],
+    budgets: {}
+  };
+  await saveState();
+}
+
+function migrateState(){
+  if(!state.bills) state.bills = [];
+  if(!state.budgets) state.budgets = {};
+  if(!state.months['2026-06']){
+    state.months['2026-06'] = blankMonth(0);
+    state.currentMonth = '2026-06';
+  }
+  Object.values(state.months).forEach(m=>{
+    if(!m.expenses.purchases) m.expenses.purchases = [];
+    if(!m.billPayments) m.billPayments = {};
+  });
+}
+
+let saveTimer = null;
+async function saveState(){
+  clearTimeout(saveTimer);
+  return new Promise(resolve=>{
+    saveTimer = setTimeout(()=>{
+      try{
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        const n = document.getElementById('saveNote');
+        if(n) n.textContent = 'Saved on this device · ' + new Date().toLocaleTimeString();
+      }catch(e){
+        const n = document.getElementById('saveNote');
+        if(n) n.textContent = 'Could not save — your device storage may be full.';
+      }
+      resolve();
+    }, 200);
+  });
+}
+
+function monthLabel(key){
+  const [y,m] = key.split('-');
+  const d = new Date(parseInt(y), parseInt(m)-1, 1);
+  return d.toLocaleDateString('en-US',{month:'long', year:'numeric'});
+}
+function sortedMonthKeys(){ return Object.keys(state.months).sort(); }
+function curMonth(){ return state.months[state.currentMonth]; }
+function nextMonthKey(key){
+  const [y,m] = key.split('-').map(Number);
+  let nm = m+1, ny = y;
+  if(nm>12){nm=1;ny++;}
+  return `${ny}-${String(nm).padStart(2,'0')}`;
+}
+
+function populateMonthSelect(){
+  const sel = document.getElementById('monthSelect');
+  sel.innerHTML = '';
+  sortedMonthKeys().forEach(k=>{
+    const opt = document.createElement('option');
+    opt.value = k; opt.textContent = monthLabel(k) + (state.months[k].closed?' · closed':'');
+    if(k===state.currentMonth) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+function billsDueInMonth(monthKey){
+  return state.bills.map(b=>{
+    const day = String(b.day).padStart(2,'0');
+    return {...b, date: `${monthKey}-${day}`};
+  });
+}
+
+function monthTotals(monthKey){
+  const m = state.months[monthKey];
+  const income = m.income.reduce((s,e)=>s+e.amount,0);
+  const catTotals = {};
+  ['food','travel','entertainment','gym','purchases','misc'].forEach(c=>{
+    catTotals[c] = m.expenses[c].reduce((s,e)=>s+e.amount,0);
+  });
+  catTotals.cigarettes = m.cigarettes.reduce((s,e)=>s+e.amount,0);
+  const debtPayments = state.loans.filter(l=>l.paid && l.paidMonthKey===monthKey).reduce((s,l)=>s+l.amount,0);
+  catTotals.debt = debtPayments;
+  let billsTotal = 0;
+  state.bills.forEach(b=>{
+    const bp = m.billPayments[b.id];
+    if(bp && bp.paid) billsTotal += (bp.actual!=null ? bp.actual : b.budget);
+  });
+  catTotals.bills = billsTotal;
+  const savDeposits = m.savingsMoves.filter(s=>s.type==='deposit').reduce((s,e)=>s+e.amount,0);
+  const savWithdraws = m.savingsMoves.filter(s=>s.type==='withdraw').reduce((s,e)=>s+e.amount,0);
+  catTotals.savings = savDeposits;
+  const totalExpense = catTotals.food+catTotals.travel+catTotals.entertainment+catTotals.gym+catTotals.purchases+catTotals.misc+catTotals.cigarettes+catTotals.debt+catTotals.bills+savDeposits;
+  const closing = m.opening + income + savWithdraws - totalExpense;
+  return {income, catTotals, totalExpense, savDeposits, savWithdraws, closing, opening:m.opening, billsTotal};
+}
+function currentCashInHand(){ return monthTotals(state.currentMonth).closing; }
+
+function render(){
+  populateMonthSelect();
+  document.getElementById('openingInput').value = curMonth().opening;
+  renderStamps();
+  renderBudgetInputs();
+  renderIncome();
+  renderExpenses();
+  renderCigs();
+  renderBills();
+  renderLoans();
+  renderIOUs();
+  renderSavings();
+  renderPie();
+  renderBalanceChart();
+  renderBVA();
+  renderSummary();
+  renderHistory();
+  renderCloseBar();
+}
+
+function renderStamps(){
+  document.getElementById('stampBalance').textContent = fmt(currentCashInHand());
+  document.getElementById('stampSavings').textContent = fmt(state.savingsTotal);
+  const dueThisMonth = state.loans.filter(l=>!l.paid && l.date.slice(0,7)===state.currentMonth)
+    .reduce((s,l)=>s+l.amount,0);
+  document.getElementById('stampDebtMonth').textContent = fmt(dueThisMonth);
+  const m = curMonth();
+  const billsDue = state.bills.filter(b=>{
+    const bp = m.billPayments[b.id];
+    return !(bp && bp.paid);
+  }).reduce((s,b)=>s+b.budget,0);
+  document.getElementById('stampBills').textContent = fmt(billsDue);
+
+  const pendingIOUs = state.people.filter(p=>p.status!=='settled');
+  const banner = document.getElementById('iouBanner');
+  if(pendingIOUs.length){
+    const owedToMe = pendingIOUs.filter(p=>p.type==='lent').reduce((s,p)=>s+p.amount,0);
+    const owedByMe = pendingIOUs.filter(p=>p.type==='borrowed').reduce((s,p)=>s+p.amount,0);
+    banner.classList.add('show');
+    banner.innerHTML = `Outstanding with people — you owe <b>${fmt(owedByMe)}</b>, you're owed <b>${fmt(owedToMe)}</b>. <span onclick="switchTab('people')">Review</span>`;
+  } else { banner.classList.remove('show'); }
+}
+
+function renderBudgetInputs(){
+  document.getElementById('budgetIncome').value = state.budgets.income || '';
+  const wrap = document.getElementById('catBudgetInputs');
+  const cats = ['food','travel','entertainment','gym','purchases','misc','cigarettes'];
+  wrap.innerHTML = cats.map(c=>`
+    <div class="field"><label>${CAT_LABELS[c]} budget (₹)</label>
+    <input type="number" value="${state.budgets[c]||''}" onchange="setBudget('${c}',this.value)"></div>
+  `).join('');
+}
+function setBudget(cat, v){ state.budgets[cat] = parseFloat(v)||0; saveState(); render(); }
+
+function renderIncome(){
+  const tb = document.getElementById('incomeTable');
+  const m = curMonth();
+  if(!m.income.length){ tb.innerHTML = '<tr><td class="empty">No earnings logged yet for this month.</td></tr>'; return; }
+  let html = '<tr><th>Date</th><th>Source</th><th>Amount</th><th></th></tr>';
+  m.income.forEach((e,i)=>{
+    html += `<tr><td>${e.date}</td><td class="note">${e.source||'—'}</td><td class="amt">${fmt(e.amount)}</td>
+      <td><button class="ghost danger" onclick="removeIncome(${i})">remove</button></td></tr>`;
+  });
+  const total = m.income.reduce((s,e)=>s+e.amount,0);
+  html += `<tr class="row-total"><td colspan="2">Total earnings</td><td class="amt">${fmt(total)}</td><td></td></tr>`;
+  tb.innerHTML = html;
+}
+
+function renderCategoryTable(cat){
+  const tb = document.getElementById('table-'+cat);
+  const list = curMonth().expenses[cat];
+  if(!list.length){ tb.innerHTML = '<tr><td class="empty">Nothing logged yet.</td></tr>'; return; }
+  let html = '<tr><th>Date</th><th>Note</th><th>Amount</th><th></th></tr>';
+  list.forEach((e,i)=>{
+    html += `<tr><td>${e.date}</td><td class="note">${e.note||'—'}</td><td class="amt">${fmt(e.amount)}</td>
+      <td><button class="ghost danger" onclick="removeExpense('${cat}',${i})">remove</button></td></tr>`;
+  });
+  const total = list.reduce((s,e)=>s+e.amount,0);
+  html += `<tr class="row-total"><td colspan="2">Total</td><td class="amt">${fmt(total)}</td><td></td></tr>`;
+  tb.innerHTML = html;
+}
+function renderExpenses(){ ['food','travel','entertainment','gym','purchases','misc'].forEach(renderCategoryTable); }
+
+function renderCigs(){
+  const list = curMonth().cigarettes;
+  const tb = document.getElementById('cigTable');
+  if(!list.length){ tb.innerHTML = '<tr><td class="empty">Nothing logged yet.</td></tr>'; }
+  else {
+    let html = '<tr><th>Date</th><th>Note</th><th>Amount</th><th></th></tr>';
+    list.forEach((e,i)=>{
+      html += `<tr><td>${e.date}</td><td class="note">${e.note||'—'}</td><td class="amt">${fmt(e.amount)}</td>
+        <td><button class="ghost danger" onclick="removeCig(${i})">remove</button></td></tr>`;
+    });
+    tb.innerHTML = html;
+  }
+  const total = list.reduce((s,e)=>s+e.amount,0);
+  document.getElementById('cigTotal').textContent = fmt(total);
+}
+
+function renderBills(){
+  const tb = document.getElementById('billsTable');
+  const m = curMonth();
+  if(!state.bills.length){ tb.innerHTML = '<tr><td class="empty">No recurring bills added yet.</td></tr>'; return; }
+  let html = '<tr><th></th><th>Bill</th><th>Due day</th><th>Budget</th><th>Actual</th><th></th></tr>';
+  state.bills.forEach(b=>{
+    const bp = m.billPayments[b.id] || {paid:false, actual:null};
+    html += `<tr>
+      <td><input class="chk" type="checkbox" ${bp.paid?'checked':''} onchange="toggleBill('${b.id}',this.checked)"></td>
+      <td>${b.name}</td>
+      <td>${b.day}${ordinalSuffix(b.day)}</td>
+      <td class="amt">${fmt(b.budget)}</td>
+      <td class="amt"><input type="number" style="width:90px;display:inline-block;" value="${bp.actual!=null?bp.actual:''}" placeholder="${b.budget}" onchange="setBillActual('${b.id}',this.value)"></td>
+      <td><button class="ghost danger" onclick="removeBill('${b.id}')">remove</button></td>
+    </tr>`;
+  });
+  tb.innerHTML = html;
+}
+function ordinalSuffix(d){
+  d = parseInt(d);
+  if(d>10 && d<14) return 'th';
+  switch(d%10){case 1:return 'st';case 2:return 'nd';case 3:return 'rd';default:return 'th';}
+}
+
+function loanStatusPill(l){
+  if(l.paid) return `<span class="pill paid">paid</span>`;
+  const due = new Date(l.date);
+  const today = new Date();
+  if(due < today) return `<span class="pill overdue">overdue</span>`;
+  return `<span class="pill due">due</span>`;
+}
+function renderLoans(){
+  const groups = {};
+  state.loans.forEach(l=>{
+    const key = l.app+'||'+l.name;
+    groups[key] = groups[key] || [];
+    groups[key].push(l);
+  });
+  let html = '';
+  Object.keys(groups).forEach(key=>{
+    const [app,name] = key.split('||');
+    const items = groups[key];
+    const remaining = items.filter(i=>!i.paid).reduce((s,i)=>s+i.amount,0);
+    html += `<div class="loan-group"><div class="head"><span class="name">${app} — ${name}</span><span class="meta">remaining ${fmt(remaining)}</span></div>`;
+    html += '<table class="ledger"><tr><th></th><th>Due date</th><th>Amount</th><th>Status</th></tr>';
+    items.sort((a,b)=>a.date.localeCompare(b.date)).forEach(l=>{
+      html += `<tr>
+        <td><input class="chk" type="checkbox" ${l.paid?'checked':''} onchange="toggleLoanPaid('${l.id}',this.checked)"></td>
+        <td>${l.date}</td><td class="amt">${fmt(l.amount)}</td><td>${loanStatusPill(l)}</td></tr>`;
+    });
+    html += '</table></div>';
+  });
+  document.getElementById('loanGroups').innerHTML = html;
+}
+
+function renderIOUs(){
+  const tb = document.getElementById('iouTable');
+  if(!state.people.length){ tb.innerHTML = '<tr><td class="empty">Nothing recorded yet.</td></tr>'; return; }
+  let html = '<tr><th>Person</th><th>Type</th><th>Date</th><th>Note</th><th>Amount</th><th>Status</th><th></th></tr>';
+  state.people.forEach((p,i)=>{
+    html += `<tr><td>${p.name}</td><td>${p.type==='lent'?'They owe you':'You owe them'}</td><td>${p.date}</td>
+      <td class="note">${p.note||'—'}</td><td class="amt">${fmt(p.amount)}</td>
+      <td>${p.status==='settled'?'<span class="pill settled">settled</span>':'<span class="pill pending">pending</span>'}</td>
+      <td><button class="ghost" onclick="toggleIOU(${i})">${p.status==='settled'?'reopen':'settle'}</button>
+      <button class="ghost danger" onclick="removeIOU(${i})">remove</button></td></tr>`;
+  });
+  tb.innerHTML = html;
+}
+
+function renderSavings(){
+  const tb = document.getElementById('savTable');
+  const list = curMonth().savingsMoves;
+  if(!list.length){ tb.innerHTML = '<tr><td class="empty">No movements yet this month.</td></tr>'; return; }
+  let html = '<tr><th>Date</th><th>Type</th><th>Amount</th><th></th></tr>';
+  list.forEach((e,i)=>{
+    html += `<tr><td>${e.date}</td><td>${e.type==='deposit'?'Deposit':'Withdraw'}</td><td class="amt">${fmt(e.amount)}</td>
+      <td><button class="ghost danger" onclick="removeSavingsMove(${i})">remove</button></td></tr>`;
+  });
+  tb.innerHTML = html;
+}
+
+function renderPie(){
+  const t = monthTotals(state.currentMonth);
+  const slices = [];
+  Object.keys(t.catTotals).forEach(c=>{
+    if(t.catTotals[c] > 0) slices.push({cat:c, amt:t.catTotals[c]});
+  });
+  const total = slices.reduce((s,x)=>s+x.amt,0);
+  const pie = document.getElementById('pieChart');
+  const legend = document.getElementById('pieLegend');
+  if(!total){
+    pie.style.background = 'var(--line)';
+    legend.innerHTML = '<div class="empty">Log some spending to see the breakdown.</div>';
+    return;
+  }
+  let acc = 0;
+  const stops = slices.map(s=>{
+    const start = acc/total*360; acc += s.amt; const end = acc/total*360;
+    return `${CAT_COLORS[s.cat]} ${start}deg ${end}deg`;
+  });
+  pie.style.background = `conic-gradient(${stops.join(',')})`;
+  legend.innerHTML = slices.sort((a,b)=>b.amt-a.amt)
+    .map(s=>`<div class="item"><span class="sw" style="background:${CAT_COLORS[s.cat]}"></span>${CAT_LABELS[s.cat]}<span class="pct">${Math.round(s.amt/total*100)}% · ${fmt(s.amt)}</span></div>`)
+    .join('');
+}
+
+function renderBVA(){
+  const t = monthTotals(state.currentMonth);
+  const wrap = document.getElementById('bvaList');
+  let html = '';
+  BUDGET_CATS.forEach(c=>{
+    const budget = state.budgets[c] || 0;
+    const actual = c==='income' ? t.income : t.catTotals[c];
+    if(!budget && !actual) return;
+    const pct = budget ? Math.min(100, Math.round((actual/budget)*100)) : (actual>0?100:0);
+    const over = budget && actual > budget;
+    const color = c==='income' ? 'var(--green)' : (over ? 'var(--red)' : CAT_COLORS[c]);
+    const label = c==='income' ? 'Income' : CAT_LABELS[c];
+    html += `<div class="bva-card">
+      <div class="bva-row"><span class="nm">${label}</span><span class="nums">${fmt(actual)} / ${fmt(budget)}</span></div>
+      <div class="bvabar"><div class="fill" style="width:${pct}%;background:${color};"></div></div>
+    </div>`;
+  });
+  wrap.innerHTML = html || '<div class="empty">Set some budget targets to see progress here.</div>';
+}
+
+function renderBalanceChart(){
+  const svg = document.getElementById('balanceChart');
+  const m = curMonth();
+  const mk = state.currentMonth;
+  const events = [];
+  m.income.forEach(e=>events.push({date:e.date, delta:e.amount}));
+  ['food','travel','entertainment','gym','purchases','misc'].forEach(c=>{
+    m.expenses[c].forEach(e=>events.push({date:e.date, delta:-e.amount}));
+  });
+  m.cigarettes.forEach(e=>events.push({date:e.date, delta:-e.amount}));
+  m.savingsMoves.forEach(e=>events.push({date:e.date, delta: e.type==='deposit'?-e.amount:e.amount}));
+  state.loans.filter(l=>l.paid && l.paidMonthKey===mk).forEach(l=>events.push({date:l.date, delta:-l.amount}));
+  state.bills.forEach(b=>{
+    const bp = m.billPayments[b.id];
+    if(bp && bp.paid){
+      const day = String(b.day).padStart(2,'0');
+      events.push({date:`${mk}-${day}`, delta: -(bp.actual!=null?bp.actual:b.budget)});
+    }
+  });
+  events.sort((a,b)=>a.date.localeCompare(b.date));
+  const points = [{date: mk+'-01', bal: m.opening}];
+  let running = m.opening;
+  events.forEach(e=>{ running += e.delta; points.push({date:e.date, bal:running}); });
+
+  const W=600,H=200,padL=50,padR=10,padT=15,padB=25;
+  const vals = points.map(p=>p.bal);
+  const minV = Math.min(0, ...vals), maxV = Math.max(...vals, minV+1);
+  const xStep = (W-padL-padR) / Math.max(1, points.length-1);
+  const yScale = v => H-padB - ( (v-minV)/(maxV-minV) ) * (H-padT-padB);
+  let path = '';
+  points.forEach((p,i)=>{
+    const x = padL + i*xStep, y = yScale(p.bal);
+    path += (i===0?'M':'L') + x.toFixed(1) + ',' + y.toFixed(1) + ' ';
+  });
+  const areaPath = path + `L${(padL+(points.length-1)*xStep).toFixed(1)},${(H-padB)} L${padL},${(H-padB)} Z`;
+
+  let gridLines = '';
+  for(let i=0;i<=2;i++){
+    const v = minV + (maxV-minV)*i/2;
+    const y = yScale(v);
+    gridLines += `<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="#232B35" stroke-width="1"/>`;
+    gridLines += `<text x="4" y="${y+4}" font-size="9" fill="#5A6270" font-family="IBM Plex Mono, monospace">${Math.round(v)}</text>`;
+  }
+  svg.innerHTML = `
+    <defs><linearGradient id="balGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#33E1A0" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#33E1A0" stop-opacity="0"/>
+    </linearGradient></defs>
+    ${gridLines}
+    <path d="${areaPath}" fill="url(#balGrad)" stroke="none"/>
+    <path d="${path}" fill="none" stroke="#33E1A0" stroke-width="2"/>
+  `;
+}
+
+function renderSummary(){
+  const t = monthTotals(state.currentMonth);
+  const tb = document.getElementById('summaryTable');
+  tb.innerHTML = `
+    <tr><td>Opening balance</td><td class="amt">${fmt(t.opening)}</td></tr>
+    <tr><td>Earnings</td><td class="amt">${fmt(t.income)}</td></tr>
+    <tr><td>Savings withdrawn</td><td class="amt">${fmt(t.savWithdraws)}</td></tr>
+    <tr><td>Total spent (all categories incl. bills, debt &amp; new savings)</td><td class="amt">-${fmt(t.totalExpense)}</td></tr>
+    <tr class="row-total"><td>Closing balance</td><td class="amt">${fmt(t.closing)}</td></tr>
+  `;
+}
+
+function renderCloseBar(){
+  const m = curMonth();
+  const txt = document.getElementById('closeText');
+  const btn = document.getElementById('closeMonthBtn');
+  if(m.closed){
+    txt.textContent = `${monthLabel(state.currentMonth)} is closed. Its closing balance became next month's opening balance.`;
+    btn.style.display = 'none';
+  } else {
+    const t = monthTotals(state.currentMonth);
+    txt.textContent = `Closing ${monthLabel(state.currentMonth)} will carry forward ${fmt(t.closing)} as next month's opening balance.`;
+    btn.style.display = 'inline-block';
+  }
+}
+
+function renderHistory(){
+  const tb = document.getElementById('historyTable');
+  const closed = sortedMonthKeys().filter(k=>state.months[k].closed);
+  if(!closed.length){ tb.innerHTML = '<tr><td class="empty">No months closed yet.</td></tr>'; return; }
+  let html = '<tr><th>Month</th><th>Opening</th><th>Earnings</th><th>Spent</th><th>Closing</th></tr>';
+  closed.forEach(k=>{
+    const t = monthTotals(k);
+    html += `<tr><td>${monthLabel(k)}</td><td class="amt">${fmt(t.opening)}</td><td class="amt">${fmt(t.income)}</td><td class="amt">${fmt(t.totalExpense)}</td><td class="amt">${fmt(t.closing)}</td></tr>`;
+  });
+  tb.innerHTML = html;
+}
+
+function addIncome(){
+  const date = document.getElementById('incDate').value || todayStr();
+  const amt = parseFloat(document.getElementById('incAmt').value);
+  const src = document.getElementById('incSrc').value.trim();
+  if(!amt || amt<=0) return;
+  curMonth().income.push({date, amount:amt, source:src});
+  document.getElementById('incAmt').value=''; document.getElementById('incSrc').value='';
+  saveState(); render();
+}
+function removeIncome(i){ curMonth().income.splice(i,1); saveState(); render(); }
+function setOpening(v){ curMonth().opening = parseFloat(v)||0; saveState(); render(); }
+
+function addExpense(){
+  const cat = document.getElementById('expCat').value;
+  const date = document.getElementById('expDate').value || todayStr();
+  const amt = parseFloat(document.getElementById('expAmt').value);
+  const note = document.getElementById('expNote').value.trim();
+  if(!amt || amt<=0) return;
+  curMonth().expenses[cat].push({date, amount:amt, note});
+  document.getElementById('expAmt').value=''; document.getElementById('expNote').value='';
+  saveState(); render();
+}
+function removeExpense(cat,i){ curMonth().expenses[cat].splice(i,1); saveState(); render(); }
+
+function addCig(){
+  const date = document.getElementById('cigDate').value || todayStr();
+  const amt = parseFloat(document.getElementById('cigAmt').value);
+  const note = document.getElementById('cigNote').value.trim();
+  if(!amt || amt<=0) return;
+  curMonth().cigarettes.push({date, amount:amt, note});
+  document.getElementById('cigAmt').value=''; document.getElementById('cigNote').value='';
+  saveState(); render();
+}
+function removeCig(i){ curMonth().cigarettes.splice(i,1); saveState(); render(); }
+
+function addBill(){
+  const name = document.getElementById('billName').value.trim();
+  const day = parseInt(document.getElementById('billDay').value);
+  const budget = parseFloat(document.getElementById('billBudget').value);
+  if(!name || !day || day<1 || day>31 || !budget) return;
+  state.bills.push({id:uid(), name, day, budget});
+  document.getElementById('billName').value=''; document.getElementById('billDay').value=''; document.getElementById('billBudget').value='';
+  saveState(); render();
+}
+function removeBill(id){
+  state.bills = state.bills.filter(b=>b.id!==id);
+  Object.values(state.months).forEach(m=>{ delete m.billPayments[id]; });
+  saveState(); render();
+}
+function toggleBill(id, checked){
+  const m = curMonth();
+  if(!m.billPayments[id]) m.billPayments[id] = {paid:false, actual:null};
+  m.billPayments[id].paid = checked;
+  saveState(); render();
+}
+function setBillActual(id, v){
+  const m = curMonth();
+  if(!m.billPayments[id]) m.billPayments[id] = {paid:false, actual:null};
+  m.billPayments[id].actual = v==='' ? null : parseFloat(v);
+  saveState(); render();
+}
+
+function toggleLoanPaid(id, checked){
+  const l = state.loans.find(x=>x.id===id);
+  if(!l) return;
+  l.paid = checked;
+  l.paidMonthKey = checked ? state.currentMonth : null;
+  saveState(); render();
+}
+
+function addIOU(){
+  const name = document.getElementById('iouPerson').value.trim();
+  const type = document.getElementById('iouType').value;
+  const amt = parseFloat(document.getElementById('iouAmt').value);
+  const date = document.getElementById('iouDate').value || todayStr();
+  const note = document.getElementById('iouNote').value.trim();
+  if(!name || !amt || amt<=0) return;
+  state.people.push({name, type, amount:amt, date, note, status:'pending'});
+  document.getElementById('iouPerson').value=''; document.getElementById('iouAmt').value=''; document.getElementById('iouNote').value='';
+  saveState(); render();
+}
+function toggleIOU(i){ state.people[i].status = state.people[i].status==='settled' ? 'pending':'settled'; saveState(); render(); }
+function removeIOU(i){ state.people.splice(i,1); saveState(); render(); }
+
+function addSavingsMove(){
+  const type = document.getElementById('savType').value;
+  const date = document.getElementById('savDate').value || todayStr();
+  const amt = parseFloat(document.getElementById('savAmt').value);
+  if(!amt || amt<=0) return;
+  curMonth().savingsMoves.push({type, date, amount:amt});
+  if(type==='deposit') state.savingsTotal += amt; else state.savingsTotal -= amt;
+  document.getElementById('savAmt').value='';
+  saveState(); render();
+}
+function removeSavingsMove(i){
+  const mv = curMonth().savingsMoves[i];
+  if(mv.type==='deposit') state.savingsTotal -= mv.amount; else state.savingsTotal += mv.amount;
+  curMonth().savingsMoves.splice(i,1);
+  saveState(); render();
+}
+
+function closeMonth(){
+  const m = curMonth();
+  const t = monthTotals(state.currentMonth);
+  m.closed = true;
+  const nk = nextMonthKey(state.currentMonth);
+  if(!state.months[nk]) state.months[nk] = blankMonth(t.closing);
+  else state.months[nk].opening = t.closing;
+  state.currentMonth = nk;
+  saveState(); render();
+}
+
+function createNewMonth(){
+  const last = sortedMonthKeys()[sortedMonthKeys().length-1];
+  const nk = nextMonthKey(last);
+  if(!state.months[nk]){
+    const opening = state.months[last] ? monthTotals(last).closing : 0;
+    state.months[nk] = blankMonth(opening);
+  }
+  state.currentMonth = nk;
+  saveState(); render();
+}
+
+function switchTab(panel){
+  document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.toggle('active', b.dataset.panel===panel));
+  document.querySelectorAll('section.panel').forEach(p=>p.classList.toggle('active', p.id==='panel-'+panel));
+}
+document.getElementById('tabs').addEventListener('click', e=>{
+  const btn = e.target.closest('button');
+  if(!btn) return;
+  switchTab(btn.dataset.panel);
+});
+document.getElementById('monthSelect').addEventListener('change', e=>{
+  state.currentMonth = e.target.value; saveState(); render();
+});
+document.getElementById('newMonthBtn').addEventListener('click', createNewMonth);
+document.getElementById('closeMonthBtn').addEventListener('click', closeMonth);
+
+function exportBackup(){
+  const blob = new Blob([JSON.stringify(state, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const stamp = new Date().toISOString().slice(0,10);
+  a.href = url; a.download = `ledger-backup-${stamp}.json`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+function restoreBackup(){
+  const fileInput = document.getElementById('restoreFile');
+  const msg = document.getElementById('restoreMsg');
+  const file = fileInput.files[0];
+  if(!file){ msg.textContent = 'Choose a file first.'; return; }
+  const reader = new FileReader();
+  reader.onload = e=>{
+    try{
+      const parsed = JSON.parse(e.target.result);
+      if(!parsed.months || !parsed.loans){ msg.textContent = "That doesn't look like a Ledger backup file."; return; }
+      state = parsed;
+      migrateState();
+      saveState();
+      render();
+      msg.textContent = 'Restored successfully.';
+    }catch(err){
+      msg.textContent = 'Could not read that file — make sure it\'s an unedited backup.';
+    }
+  };
+  reader.readAsText(file);
+}
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  });
+}
+
+(async function init(){
+  await loadState();
+  migrateState();
+  const today = todayStr();
+  ['incDate','expDate','cigDate','iouDate','savDate'].forEach(id=>{
+    document.getElementById(id).value = today;
+  });
+  render();
+})();
+</script>
+</body>
+</html>
