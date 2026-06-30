@@ -411,6 +411,7 @@
       <div class="closebar">
         <div class="txt" id="closeText">Closing balance will carry forward.</div>
         <button id="closeMonthBtn">Close &amp; carry forward</button>
+        <button id="reopenMonthBtn" class="ghost danger" style="display:none;">Reopen this month</button>
       </div>
     </div>
   </section>
@@ -1201,13 +1202,16 @@ function renderCloseBar(){
   const m = curMonth();
   const txt = document.getElementById('closeText');
   const btn = document.getElementById('closeMonthBtn');
+  const reopenBtn = document.getElementById('reopenMonthBtn');
   if(m.closed){
     txt.textContent = `${monthLabel(state.currentMonth)} is closed. Its closing balance became next month's opening balance.`;
     btn.style.display = 'none';
+    reopenBtn.style.display = 'inline-block';
   } else {
     const t = monthTotals(state.currentMonth);
     txt.textContent = `Closing ${monthLabel(state.currentMonth)} will carry forward ${fmt(t.closing)} as next month's opening balance.`;
     btn.style.display = 'inline-block';
+    reopenBtn.style.display = 'none';
   }
 }
 
@@ -1391,6 +1395,24 @@ function closeMonth(){
   saveState(); render();
 }
 
+function reopenMonth(){
+  const m = curMonth();
+  if(!m.closed){
+    showToast("This month isn't closed", true);
+    return;
+  }
+  const nk = nextMonthKey(state.currentMonth);
+  const nextM = state.months[nk];
+  if(nextM && (nextM.income.length || nextM.cigarettes.length || nextM.savingsMoves.length ||
+     Object.values(nextM.expenses).some(arr=>arr.length) || Object.keys(nextM.billPayments).length)){
+    const ok = confirm(`${monthLabel(nk)} already has entries logged in it. Reopening ${monthLabel(state.currentMonth)} won't delete those, but ${monthLabel(nk)}'s opening balance was based on this month's old closing figure — you may need to recheck it. Continue?`);
+    if(!ok) return;
+  }
+  m.closed = false;
+  saveState(); render();
+  showToast(`${monthLabel(state.currentMonth)} reopened`);
+}
+
 function createNewMonth(){
   const last = sortedMonthKeys()[sortedMonthKeys().length-1];
   const nk = nextMonthKey(last);
@@ -1416,6 +1438,7 @@ document.getElementById('monthSelect').addEventListener('change', e=>{
 });
 document.getElementById('newMonthBtn').addEventListener('click', createNewMonth);
 document.getElementById('closeMonthBtn').addEventListener('click', closeMonth);
+document.getElementById('reopenMonthBtn').addEventListener('click', reopenMonth);
 
 function exportBackup(){
   const blob = new Blob([JSON.stringify(state, null, 2)], {type:'application/json'});
